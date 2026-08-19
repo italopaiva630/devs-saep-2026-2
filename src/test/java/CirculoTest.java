@@ -20,7 +20,7 @@ public class CirculoTest {
     }
 
     @Test
-    void verificarCalculoDaArea() {
+    void verificarCalculoDaAreaDoCirculo() {
 
         Circulo circulo = new Circulo(15);
 
@@ -34,7 +34,7 @@ public class CirculoTest {
     }
 
     @Test
-    void verificandoNumeroCerto() {
+    void verificandoNumeroDoRaioCerto() {
 
         Circulo circulo = new Circulo(10);
 
@@ -42,7 +42,7 @@ public class CirculoTest {
     }
 
     @Test
-    void verificandoCirculo() {
+    void deveInicializarCirculoComRaioValidoEPositivo() {
 
         Circulo circulo = new Circulo(10);
 
