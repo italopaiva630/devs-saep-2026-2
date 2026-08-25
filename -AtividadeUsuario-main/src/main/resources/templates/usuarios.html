@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Início - Almoxarifado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-4">
+
+<div class="glass-card p-8 sm:p-10 rounded-2xl shadow-2xl w-full max-w-lg text-center">
+
+    <!-- Ícone de Boas-Vindas -->
+    <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600/20 text-blue-400 rounded-2xl mb-6 border border-blue-500/30">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+    </div>
+
+    <!-- Nome do Usuário Logado -->
+    <h1 class="text-3xl font-bold tracking-tight text-white mb-2">
+        Seja bem-vindo, <span class="text-blue-400" th:text="${nomeUsuario}">Usuário</span>!
+    </h1>
+    <p class="text-sm text-slate-400 mb-8">
+        Você acessou o sistema do Almoxarifado com sucesso.
+    </p>
+
+    <!-- Botão de Sair -->
+    <a th:href="@{/logout}"
+       class="inline-flex items-center justify-center w-full bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 font-medium py-3 px-4 rounded-xl transition-all">
+        Sair do Sistema
+    </a>
+
+</div>
+
+</body>
+</html>
