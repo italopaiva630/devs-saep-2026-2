@@ -1,7 +1,7 @@
 package com.login.atividade.controllers;
 
-import com.login.atividade.dtos.UsuarioDto;
 import com.login.atividade.entities.UsuarioEntity;
+import com.login.atividade.exceptions.UsuarioException;
 import com.login.atividade.services.UsuarioService;
 import com.login.atividade.sessoes.SessaoDto;
 import com.login.atividade.sessoes.SessaoUtil;
@@ -10,11 +10,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import jakarta.validation.Valid;
-import org.springframework.validation.BindingResult;
 
 @Controller
-@RequestMapping
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
@@ -23,197 +20,83 @@ public class UsuarioController {
         this.usuarioService = usuarioService;
     }
 
+    @GetMapping("/")
+    public String index() {
+        return "redirect:/login";
+    }
+
     @GetMapping("/login")
-    public String exibirLogin() {
+    public String loginForm() {
         return "login";
     }
 
     @PostMapping("/login")
-    public String processarLogin(@RequestParam("email") String email,
-                                 @RequestParam("senha") String senha,
-                                 HttpSession session,
-                                 Model model) {
+    public String realizarLogin(@RequestParam String email,
+                                @RequestParam String senha,
+                                HttpSession session,
+                                Model model) {
         try {
-            UsuarioEntity usuarioLogado = usuarioService.fazerLogin(email, senha);
+            UsuarioEntity usuario = usuarioService.fazerLogin(email, senha);
 
-            SessaoDto sessaoDto = new SessaoDto();
-            sessaoDto.setUsuarioId(usuarioLogado.getId());
-            sessaoDto.setUsuarioNome(usuarioLogado.getNome());
-
-            SessaoUtil.RegistrarSessao(session, sessaoDto);
+            SessaoDto sessao = new SessaoDto();
+            sessao.setUsuarioId(usuario.getId());
+            sessao.setUsuarioNome(usuario.getNome());
+            SessaoUtil.RegistrarSessao(session, sessao);
 
             return "redirect:/usuarios";
-
+        } catch (UsuarioException e) {
+            model.addAttribute("erro", e.getMessage());
+            return "login";
         } catch (Exception e) {
-            model.addAttribute("erro", "Usuário ou senha inválidos.");
+            e.printStackTrace();
+            model.addAttribute("erro", e.getMessage() != null ? e.getMessage() : "Erro inesperado ao realizar login.");
             return "login";
         }
     }
 
+    @GetMapping("/usuarios")
+    public String inicio(HttpSession session, Model model) {
+        SessaoDto sessao = SessaoUtil.ObterSessao(session);
+        if (sessao == null) {
+            return "redirect:/login";
+        }
+
+        model.addAttribute("nomeUsuario", sessao.getUsuarioNome());
+        return "usuarios";
+    }
+
     @GetMapping("/logout")
-    public String deslogar(HttpSession session) {
+    public String logout(HttpSession session) {
         SessaoUtil.RemoverSessao(session);
         return "redirect:/login";
     }
 
-    @GetMapping("/usuarios")
-    public String listarUsuarios(Model model, HttpSession session) {
-        SessaoDto usuarioLogado = SessaoUtil.ObterSessao(session);
-
-        if (usuarioLogado == null) {
-            return "redirect:/login";
-        }
-
-        // Passa o nome do usuário logado e a lista para a view
-        model.addAttribute("nomeUsuario", usuarioLogado.getUsuarioNome());
-        model.addAttribute("usuarios", usuarioService.listarUsuarios());
-
-        return "usuarios";
-    }
-
     @GetMapping("/cadastro-usuario")
-    public String exibirCadastro(Model model) {
-        model.addAttribute("usuario", new UsuarioDto());
+    public String exibirFormularioCadastro(Model model) {
+        // Envia o DTO para o formulário
+        model.addAttribute("usuario", new com.login.atividade.dtos.UsuarioDto());
         return "cadastro-usuario";
     }
 
-    @PostMapping("/usuarios/salvar")
-    public String salvar(
-            @Valid @ModelAttribute("usuario") UsuarioDto usuario,
-            BindingResult result,
-            HttpSession session,
-            Model model,
-            RedirectAttributes redirectAttributes) {
-
-        if (result.hasErrors()) {
-            return "cadastro-usuario";
-        }
-
+    @PostMapping("/salvar-usuario")
+    public String salvarUsuario(@ModelAttribute("usuario") com.login.atividade.dtos.UsuarioDto dto,
+                                RedirectAttributes redirectAttributes,
+                                Model model) {
         try {
-            usuarioService.cadastrarUsuario(usuario);
-
-            SessaoDto usuarioLogado = SessaoUtil.ObterSessao(session);
-
-            if (usuarioLogado == null) {
-                redirectAttributes.addFlashAttribute(
-                        "mensagem",
-                        "Conta criada com sucesso! Insira suas credenciais."
-                );
-                return "redirect:/login";
-            }
-
-            redirectAttributes.addFlashAttribute(
-                    "mensagem",
-                    "Usuário salvo com sucesso!"
-            );
-
-            return "redirect:/usuarios";
-
-        } catch (RuntimeException e) {
+            // Chama o método correto do UsuarioService passando o DTO
+            usuarioService.cadastrarUsuario(dto);
+            redirectAttributes.addFlashAttribute("mensagem", "Cadastro realizado com sucesso! Faça seu login.");
+            return "redirect:/login";
+        } catch (UsuarioException e) {
+            // Captura as exceções de validação (ex: menor de idade, senha fraca, e-mail duplicado)
             model.addAttribute("erro", e.getMessage());
+            model.addAttribute("usuario", dto);
             return "cadastro-usuario";
-        }
-    }
-
-    @GetMapping("/usuario/editar/{id}")
-    public String editar(@PathVariable Long id,
-                         Model model,
-                         HttpSession session,
-                         RedirectAttributes redirectAttributes) {
-
-        SessaoDto usuarioLogado = SessaoUtil.ObterSessao(session);
-
-        if (usuarioLogado == null) {
-            return "redirect:/login";
-        }
-
-        if (!usuarioLogado.getUsuarioId().equals(id)) {
-            redirectAttributes.addFlashAttribute(
-                    "erro",
-                    "Você só pode editar o seu próprio perfil!"
-            );
-            return "redirect:/usuarios";
-        }
-
-        UsuarioEntity usuario = usuarioService.buscarPorId(id);
-        model.addAttribute("usuario", usuario);
-
-        return "cadastro-usuario";
-    }
-
-    @PostMapping("/usuario/atualizar/{id}")
-    public String atualizar(@PathVariable Long id,
-                            @ModelAttribute UsuarioDto usuario,
-                            Model model,
-                            HttpSession session,
-                            RedirectAttributes redirectAttributes) {
-
-        SessaoDto usuarioLogado = SessaoUtil.ObterSessao(session);
-
-        if (usuarioLogado == null) {
-            return "redirect:/login";
-        }
-
-        if (!usuarioLogado.getUsuarioId().equals(id)) {
-            redirectAttributes.addFlashAttribute(
-                    "erro",
-                    "Ação não autorizada!"
-            );
-            return "redirect:/usuarios";
-        }
-
-        try {
-            usuarioService.atualizarUsuario(id, usuario);
-
-            redirectAttributes.addFlashAttribute(
-                    "mensagem",
-                    "Usuário atualizado com sucesso!"
-            );
-
-            return "redirect:/usuarios";
-
-        } catch (RuntimeException e) {
-            model.addAttribute("erro", e.getMessage());
-            return "cadastro-usuario";
-        }
-    }
-
-    @GetMapping("/usuario/excluir/{id}")
-    public String excluir(@PathVariable Long id,
-                          RedirectAttributes redirectAttributes,
-                          HttpSession session) {
-
-        SessaoDto usuarioLogado = SessaoUtil.ObterSessao(session);
-
-        if (usuarioLogado == null) {
-            return "redirect:/login";
-        }
-
-        if (!usuarioLogado.getUsuarioId().equals(id)) {
-            redirectAttributes.addFlashAttribute(
-                    "erro",
-                    "Você não tem permissão para excluir outro usuário!"
-            );
-            return "redirect:/usuarios";
-        }
-
-        try {
-            usuarioService.excluirUsuario(id);
-            SessaoUtil.RemoverSessao(session);
-
-            redirectAttributes.addFlashAttribute(
-                    "mensagem",
-                    "Sua conta foi excluída com sucesso."
-            );
-
-            return "redirect:/login";
-
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute(
-                    "erro",
-                    "Não foi possível excluir sua conta."
-            );
-            return "redirect:/usuarios";
+            e.printStackTrace();
+            model.addAttribute("erro", e.getMessage() != null ? e.getMessage() : "Erro ao cadastrar usuário.");
+            model.addAttribute("usuario", dto);
+            return "cadastro-usuario";
         }
     }
 }
